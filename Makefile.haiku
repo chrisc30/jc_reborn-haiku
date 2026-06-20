@@ -1,0 +1,89 @@
+
+# Makefile.haiku
+#
+# Builds JohnnyCastaway.haikuscreensaver — a shared library loaded by
+# Haiku's screensaver preflet.
+#
+# Usage:
+#   make -f Makefile.haiku
+#   make -f Makefile.haiku install   (copies to ~/config/non-packaged/add-ons/Screen Savers/)
+#   make -f Makefile.haiku clean
+
+# --------------------------------------------------------------------------
+# Compiler / flags
+# --------------------------------------------------------------------------
+
+CC  = gcc
+CXX = g++
+
+# C sources use c99; C++ sources use c++17
+CFLAGS   = -Wall -Wpedantic -std=c99   -fPIC -O2
+CXXFLAGS = -Wall              -std=c++17 -fPIC -O2
+
+# Haiku system headers are on the default include path.
+# The screensaver kit header is in /boot/system/develop/headers/os/add-ons/screen_saver/
+INCLUDES =
+
+# Link as a shared library; pull in the Haiku app/screensaver/media kits.
+# -lmedia is needed only if sound.c uses the media kit; swap for your sound backend.
+LDFLAGS  = -shared -Xlinker -soname=JohnnyCastaway
+LDLIBS   = -lbe -lscreensaver -lmedia -lroot -lz
+
+# --------------------------------------------------------------------------
+# Output
+# --------------------------------------------------------------------------
+
+TARGET  = JohnnyCastaway
+INSTALL_DIR = $(HOME)/config/non-packaged/add-ons/Screen Savers
+
+# --------------------------------------------------------------------------
+# Sources
+# --------------------------------------------------------------------------
+
+# C sources (compiled with CFLAGS)
+C_SRC = \
+    utils.c \
+    uncompress.c \
+    resource.c \
+    dump.c \
+    story.c \
+    walk.c \
+    calcpath.c \
+    ads.c \
+    ttm.c \
+    island.c \
+    bench.c \
+    graphics.c \
+    sound.c \
+    events.c \
+    config.c
+
+# C++ sources (compiled with CXXFLAGS)
+CXX_SRC = \
+    jc_saver.cpp
+
+C_OBJ   = $(C_SRC:.c=.o)
+CXX_OBJ = $(CXX_SRC:.cpp=.o)
+ALL_OBJ = $(C_OBJ) $(CXX_OBJ)
+
+# --------------------------------------------------------------------------
+# Rules
+# --------------------------------------------------------------------------
+
+all: $(TARGET)
+
+$(TARGET): $(ALL_OBJ)
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c -o $@ $<
+
+install: $(TARGET)
+	mkdir -p $(INSTALL_DIR)
+	cp $(TARGET) $(INSTALL_DIR)/
+
+clean:
+	rm -fv $(ALL_OBJ) $(TARGET)

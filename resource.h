@@ -165,6 +165,7 @@ extern int numTtmResources;
 //    Functions prototypes
 //----------------------------
 
+struct TPalResource *findPalResource(char *searchString);
 void parseResourceFiles(char *);
 struct TAdsResource *findAdsResource(char *searchString);
 struct TBmpResource *findBmpResource(char *searchString);

@@ -506,3 +506,11 @@ struct TTtmResource *findTtmResource(char *searchString)
     return result;
 }
 
+
+struct TPalResource *findPalResource(char *searchString)
+{
+    for (int i=0; i < numPalResources; i++)
+        if (!strcmp(palResources[i]->resName, searchString))
+            return palResources[i];
+    return NULL;
+}

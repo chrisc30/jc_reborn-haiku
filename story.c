@@ -201,7 +201,6 @@ void storyPlay()
     adsPlayIntro();
 
     while (1) {
-
         storyUpdateCurrentDay();
         storyCalculateIslandFromDateAndTime();
         unwantedFlags = 0;

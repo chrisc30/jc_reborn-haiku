@@ -1,121 +1,55 @@
 /*
- *  This file is part of 'Johnny Reborn'
+ *  events.c  —  Haiku port
  *
- *  An open-source engine for the classic
- *  'Johnny Castaway' screensaver by Sierra.
+ *  The original events.c drove the main loop via SDL_PollEvent and SDL_Delay.
+ *  In the Haiku screensaver model there is no window to poll — the BScreenSaver
+ *  framework calls Draw() at the configured tick interval.
  *
- *  Copyright (C) 2019 Jeremie GUILLAUME
+ *  eventsWaitTick() still exists so the game logic (ttm.c, story.c, etc.)
+ *  compiles unchanged, but it now just yields for the requested time using
+ *  snooze() (Haiku's fine-grained sleep, resolution ~1 ms).
  *
- *  This program is free software: you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation, either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
+ *  The original delay unit is 1/50 s (20 ms per tick unit), matching the
+ *  original Windows screensaver's WM_TIMER at 20 ms.
  */
 
-#include <stdlib.h>
+#include <OS.h>          /* snooze()                         */
 #include <stdio.h>
+#include <stdlib.h>
 
-#include <SDL2/SDL.h>
 #include "mytypes.h"
-#include "graphics.h"
 #include "events.h"
+#include "graphics.h"   /* grOutputSfc (for future use)     */
 
-
-static uint32 lastTicks = 0x00ffffff;
-static int paused   = 0;
-static int maxSpeed = 0;
-static int oneFrame = 0;
 
 int evHotKeysEnabled = 0;
+int evQuitRequested  = 0;   /* set to 1 by jc_saver.cpp StopSaver() */
 
-
-static void eventsProcessEvents()
-{
-    SDL_Event event;
-
-    while (SDL_PollEvent(&event)) {
-
-        switch(event.type) {
-
-            case SDL_KEYDOWN:
-
-                if (evHotKeysEnabled) {
-
-                    switch (event.key.keysym.sym) {
-
-                        case SDLK_SPACE:
-                            paused = !paused;
-                            break;
-
-                        case SDLK_m:
-                            maxSpeed = !maxSpeed;
-                            break;
-
-                        case SDLK_RETURN:
-                            if (event.key.keysym.mod & KMOD_LALT) {
-                                grToggleFullScreen();
-                                oneFrame = 1;   // to redraw the window // TODO
-                            }
-                            else {
-                                oneFrame = 1;
-                            }
-                            break;
-
-                        case SDLK_ESCAPE:
-                            graphicsEnd();
-                            exit(255);
-                            break;
-                    }
-                }
-                else {
-                    // Normal behaviour : no hot keys, the screen saver
-                    // terminates if any key is pressed
-                    graphicsEnd();
-                    exit(255);
-                }
-                break;
-
-            case SDL_WINDOWEVENT:
-                grRefreshDisplay();
-                break;
-
-            case SDL_QUIT:
-                graphicsEnd();
-                exit(255);
-                break;
-        }
-    }
-}
+static bigtime_t lastTick = 0;
 
 
 void eventsInit()
 {
-    lastTicks = SDL_GetTicks();
+    lastTick = system_time();   /* Haiku: microseconds since boot */
 }
 
 
+/*
+ * delay is in units of 20 ms (same as original).
+ * We sleep until the wall-clock target time to avoid drift.
+ * If evQuitRequested is set, return immediately so the story
+ * loop can check it and break out cleanly.
+ */
 void eventsWaitTick(uint16 delay)
 {
-    delay *= 20;
-    oneFrame = 0;
+    if (evQuitRequested)
+        return;
 
-    eventsProcessEvents();
+    bigtime_t target = lastTick + (bigtime_t)delay * 20000LL; /* µs */
+    bigtime_t now    = system_time();
 
-    while ((paused && !oneFrame)
-            || (!maxSpeed && (SDL_GetTicks() - lastTicks < delay))) {
-        SDL_Delay(5);
-        eventsProcessEvents();
-    }
+    if (target > now)
+        snooze(target - now);
 
-    lastTicks = SDL_GetTicks();
+    lastTick = system_time();
 }
-

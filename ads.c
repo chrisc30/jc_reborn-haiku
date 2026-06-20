@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <SDL2/SDL.h>
+
 
 #include "mytypes.h"
 #include "utils.h"
@@ -35,6 +35,7 @@
 #include "walk.h"
 #include "bench.h"
 #include "ads.h"
+#include <OS.h>
 
 
 #define MAX_RANDOM_OPS        10
@@ -433,7 +434,9 @@ void adsPlaySingleTtm(char *ttmName)  // TODO - tempo
     while (ttmThreads[0].ip < ttmSlots[0].dataSize) {
         ttmPlay(ttmThreads);
         ttmThreads[0].isRunning = 1;
-        grUpdateDisplay(NULL, ttmThreads, NULL);
+        grStartFrame();
+        grBlitLayer(ttmThreads[0].ttmLayer);
+        grFlushDisplay();
         grUpdateDelay = ttmThreads[0].delay;
     }
 
@@ -668,8 +671,10 @@ void adsPlay(char *adsName, uint16 adsTag)
     data = adsResource->uncompressedData;
     dataSize = adsResource->uncompressedSize;
 
-    for (int i=0; i < adsResource->numRes; i++)
+    for (int i=0; i < adsResource->numRes; i++) {
+        if (adsResource->res[i].id >= MAX_TTM_SLOTS) fatalError("ttmSlot id %d >= MAX_TTM_SLOTS %d", adsResource->res[i].id, MAX_TTM_SLOTS);
         ttmLoadTtm(&ttmSlots[adsResource->res[i].id], adsResource->res[i].name);
+    }
 
     adsLoad(data, dataSize, adsResource->numTags, adsTag, &offset);
 
@@ -726,7 +731,14 @@ void adsPlay(char *adsName, uint16 adsTag)
         }
 
         // Refresh display
-        grUpdateDisplay(&ttmBackgroundThread, ttmThreads, &ttmHolidayThread);
+        grStartFrame();
+/* background already blitted by grStartFrame() */
+for (int i = 0; i < MAX_TTM_THREADS; i++)
+    if (ttmThreads[i].isRunning)
+        grBlitLayer(ttmThreads[i].ttmLayer);
+if (ttmHolidayThread.isRunning)
+    grBlitLayer(ttmHolidayThread.ttmLayer);
+grFlushDisplay();
 
         // Determine min timer through all threads
         uint16 mini = 300;
@@ -829,15 +841,17 @@ void adsPlayBench()  // TODO - tempo
         for (int i=0; i < MAX_TTM_THREADS; i++)
             ttmThreads[i].isRunning = (i<numLayers ? 1 : 0);
 
-        startTicks = SDL_GetTicks();
+        startTicks = (uint32)(system_time() / 1000);
         counter = 0;
 
-        while ((SDL_GetTicks() - startTicks) <= 3000) {
+        while (((uint32)(system_time() / 1000) - startTicks) <= 3000) {
 
             for (int i=0; i < numLayers; i++)
                 benchPlay(&ttmThreads[i], i);
 
-            grUpdateDisplay(NULL, ttmThreads, NULL);
+            grStartFrame();
+        grBlitLayer(ttmThreads[0].ttmLayer);
+        grFlushDisplay();
 
             counter++;
         }
@@ -856,7 +870,8 @@ void adsPlayIntro()
 {
     grLoadScreen("INTRO.SCR");
     grUpdateDelay = 100;
-    grUpdateDisplay(NULL, ttmThreads, NULL);
+    grStartFrame();
+    grFlushDisplay();
     grFadeOut();
     ttmResetSlot(&ttmSlots[0]);
 }
@@ -939,7 +954,14 @@ void adsPlayWalk(int fromSpot, int fromHdg, int toSpot, int toHdg)
         }
 
         // Refresh display
-        grUpdateDisplay(&ttmBackgroundThread, ttmThreads, &ttmHolidayThread);
+        grStartFrame();
+/* background already blitted by grStartFrame() */
+for (int i = 0; i < MAX_TTM_THREADS; i++)
+    if (ttmThreads[i].isRunning)
+        grBlitLayer(ttmThreads[i].ttmLayer);
+if (ttmHolidayThread.isRunning)
+    grBlitLayer(ttmHolidayThread.ttmLayer);
+grFlushDisplay();
 
         // Determine min timer from the two threads
         uint16 mini = 300;

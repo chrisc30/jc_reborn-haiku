@@ -41,12 +41,12 @@ void islandInit(struct TTtmThread *ttmThread)
         grLoadScreen("NIGHT.SCR");
     }
     else {
-        char scrName[12];
+        char scrName[13];
         sprintf(scrName, "OCEAN0%d.SCR", rand() % 3);
         grLoadScreen(scrName);
     }
 
-    ttmThread->ttmLayer = grBackgroundSfc;
+    ttmThread->ttmLayer = grNewLayer();
 
     grDx = islandState.xPos;
     grDy = islandState.yPos;
@@ -75,7 +75,7 @@ void islandInit(struct TTtmThread *ttmThread)
 
     int windDirection = rand() % 2;
     int numClouds;
-    uint16 cloudX, cloudY;
+    uint16 cloudX = 0, cloudY = 0;
 
     grDx = grDy = 0;
 

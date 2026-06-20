@@ -74,7 +74,7 @@ void walkInit(int fromSpot, int fromHdg, int toSpot, int toHdg)
 int walkAnimate(struct TTtmThread *ttmThread, struct TTtmSlot *ttmBgSlot)
 {
     struct TTtmSlot *ttmSlot = ttmThread->ttmSlot;
-    SDL_Surface *sfc = ttmThread->ttmLayer;
+    GrSurface *sfc = ttmThread->ttmLayer;
     static uint16 (*data)[4] = NULL;
     int delay;
 
