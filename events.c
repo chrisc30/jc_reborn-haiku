@@ -48,8 +48,8 @@ void eventsWaitTick(uint16 delay)
     bigtime_t target = lastTick + (bigtime_t)delay * 20000LL; /* µs */
     bigtime_t now    = system_time();
 
-    if (target > now)
-        snooze(target - now);
+    while (!evQuitRequested && system_time() < target)
+        snooze(10000LL);  /* sleep 10ms at a time, check quit flag */
 
     lastTick = system_time();
 }

@@ -169,13 +169,13 @@ status_t JohnnyScreenSaver::StartSaver(BView *view, bool preview)
 
 void JohnnyScreenSaver::StopSaver()
 {
-    if (!fPreview) {
-        _StopGameThread();
-        soundEnd();
-        graphicsEnd();
-        fResourcesLoaded = false;
+    evQuitRequested = 1;
+    fRunning = false;
+    /* Do not block — just signal and release resources.
+       The game thread will exit on its own when it next checks evQuitRequested. */
+    if (fGameThread >= 0) {
+        fGameThread = -1;
     }
-
     delete fBitmap;
     fBitmap = NULL;
 }
@@ -286,8 +286,14 @@ void JohnnyScreenSaver::_StopGameThread()
     fRunning = false;
 
     if (fGameThread >= 0) {
+        /* Wait up to 500ms then kill the thread forcefully */
         status_t result;
-        wait_for_thread(fGameThread, &result);
+        bigtime_t deadline = system_time() + 500000LL;
+        while (system_time() < deadline) {
+            if (wait_for_thread(fGameThread, &result) == B_OK) break;
+            snooze(10000);
+        }
+        kill_thread(fGameThread);
         fGameThread = -1;
     }
 }
