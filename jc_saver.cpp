@@ -12,6 +12,7 @@
  *      ~/config/non-packaged/add-ons/Screen Savers/JohnnyCastaway
  */
 
+#include <signal.h>
 #include <ScreenSaver.h>
 #include <View.h>
 #include <Bitmap.h>
@@ -171,9 +172,10 @@ void JohnnyScreenSaver::StopSaver()
 {
     evQuitRequested = 1;
     fRunning = false;
-    /* Do not block — just signal and release resources.
-       The game thread will exit on its own when it next checks evQuitRequested. */
     if (fGameThread >= 0) {
+        status_t result;
+        if (wait_for_thread_etc(fGameThread, B_RELATIVE_TIMEOUT, 50000LL, &result) != B_OK)
+            kill_thread(fGameThread);
         fGameThread = -1;
     }
     delete fBitmap;
